@@ -1,126 +1,176 @@
 # Laravel Redis Bloom
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/iperamuna/laravel-redis-bloom.svg?style=flat-square)](https://packagist.org/packages/iperamuna/laravel-redis-bloom)
-[![Total Downloads](https://img.shields.io/packagist/dt/iperamuna/laravel-redis-bloom.svg?style=flat-square)](https://packagist.org/packages/iperamuna/laravel-redis-bloom)
-[![License](https://img.shields.io/packagist/l/iperamuna/laravel-redis-bloom.svg?style=flat-square)](https://packagist.org/packages/iperamuna/laravel-redis-bloom)
+<p align="center">
+    <img src="https://raw.githubusercontent.com/iperamuna/laravel-redis-bloom/main/art/banner.png" alt="Laravel Redis Bloom Banner" style="width: 100%; max-width: 800px;">
+</p>
 
-A high-performance RedisBloom wrapper for Laravel with auto-rotation, metrics, and diagnostics.
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/iperamuna/laravel-redis-bloom.svg?style=for-the-badge&color=blue)](https://packagist.org/packages/iperamuna/laravel-redis-bloom)
+[![Total Downloads](https://img.shields.io/packagist/dt/iperamuna/laravel-redis-bloom.svg?style=for-the-badge&color=green)](https://packagist.org/packages/iperamuna/laravel-redis-bloom)
+[![Software License](https://img.shields.io/badge/license-MIT-brightgreen.svg?style=for-the-badge)](LICENSE)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/iperamuna/laravel-redis-bloom/run-tests.yml?branch=main&style=for-the-badge)](https://github.com/iperamuna/laravel-redis-bloom/actions)
 
-## Features
+**Laravel Redis Bloom** is an industrial-grade probabilistic infrastructure layer for Laravel. It provides a highly optimized, developer-friendly wrapper around the RedisBloom module, enabling sub-millisecond membership checks at massive scale with near-zero memory overhead.
 
-- ✅ **RedisBloom Integration**: Native support for `BF.ADD`, `BF.EXISTS`, etc.
-- ✅ **Auto-Rotation**: Automatically creates new filter versions when capacity is reached.
-- ✅ **Metrics Tracking**: Monitor hits, misses, and false positives.
-- ✅ **Artisan Diagnostics**: `php artisan bloom:doctor` to check system health.
-- ✅ **Bulk Loading**: `php artisan bloom:fill` to populate filters from Eloquent models.
-- ✅ **Validation & Middleware**: Easy-to-use validation rules and route middleware.
-- ✅ **OS-Aware Errors**: Actionable instructions for installing RedisBloom on macOS, Linux, and Windows.
+Whether you are deduplicating billion-row datasets, protecting signup APIs from spam, or implementing high-speed caching logic, this package provides the tools to do it with confidence.
 
-## Installation
+---
 
-1. Install the package via composer:
+## 🔥 Key Architectural Features
 
+- 🚀 **Native RedisBloom Power**: First-class support for `BF.ADD`, `BF.EXISTS`, and `BF.RESERVE` commands.
+- 🔄 **Intelligent Auto-Rotation**: Never worry about capacity again. The system automatically version-controls and rotates filters when full, ensuring continuous availability.
+- 📊 **Observability & Metrics**: Built-in tracking for hits, misses, and false-positive rates to fine-tune your probabilistic models.
+- 🩺 **System Diagnostics**: A comprehensive `bloom:doctor` command that analyzes your OS, Redis version, and Bloom module status to provide actionable fixes.
+- 📦 **Bulk Ingestion Engine**: High-speed Artisan command to hydrate Bloom filters from your existing database tables using chunked processing.
+- 🛡️ **Defensive Guard Logic**: Graceful fallbacks and OS-aware error messages that guide you through setup on macOS, Linux, or Windows.
+- 🧩 **Laravel Native Integration**: Includes custom Validation Rules, Route Middleware, and a Filament Dashboard widget out of the box.
+
+---
+
+## 🛠 Installation
+
+### 1. Requirements
+Ensure your Redis server has the [RedisBloom module](https://redis.io/docs/latest/operate/oss_and_stack/install/install-stack/) installed. If you aren't sure, don't worry—our doctor command will check it for you.
+
+### 2. Composer
 ```bash
 composer require iperamuna/laravel-redis-bloom
 ```
 
-2. Publish the config file:
-
+### 3. Publish Configuration
 ```bash
 php artisan vendor:publish --tag=bloom-config
 ```
 
-3. Ensure you have the **RedisBloom** module installed on your Redis server. Use the doctor command to verify:
-
+### 4. Run System Check
 ```bash
 php artisan bloom:doctor
 ```
 
-## Configuration
+---
 
-Define your filters in `config/bloom.php`:
+## ⚙️ Configuration
+
+Define your specialized filters in `config/bloom.php`. You can tune the error rate and capacity per filter if needed, or use the global defaults.
 
 ```php
 return [
-    'error_rate' => 0.01,
-    'capacity' => 1000000,
+    'error_rate' => 0.001, // 0.1% false positive rate
+    'capacity'   => 1000000, // Initial capacity of 1 million items
+    
     'filters' => [
-        'emails' => 'bf:emails',
+        'emails' => 'bf:users:emails',
+        'ips'    => 'bf:security:blocked_ips',
+        'phones' => 'bf:customers:phones',
     ],
+    
+    'rotation_keep_versions' => 3, // Keep last 3 rotated versions for safety
 ];
 ```
 
-## Usage
+---
 
-### Basic API
+## 🚀 Advanced Usage
+
+### 🧠 The Fluent API
+The `Bloom` facade provides a clean, chainable interface for interacting with your filters.
 
 ```php
 use Iperamuna\LaravelRedisBloom\Facades\Bloom;
 
-// Add an item
-Bloom::filter('emails')->add('user@example.com');
+// Single entry ingestion
+Bloom::filter('emails')->add('founder@example.com');
 
-// Check existence
-if (Bloom::filter('emails')->exists('user@example.com')) {
-    // Probable match
+// High-speed membership check
+if (Bloom::filter('emails')->exists('founder@example.com')) {
+    // This value probably exists (Probabilistic result)
 }
 
-// Check with DB fallback (truth check)
-$exists = Bloom::filter('emails')->check($email, function ($email) {
-    return User::where('email', $email)->exists();
-});
-```
-
-### Validation
-
-```php
-$request->validate([
-    'email' => 'required|email|bloom:emails',
+// Bulk ingestion (Pipelined for performance)
+Bloom::filter('ips')->addMany([
+    '127.0.0.1',
+    '192.168.1.1',
+    '10.0.0.1'
 ]);
 ```
 
-### Middleware
+### 🛡️ Smart Validation (Truth Verification)
+Bloom filters are probabilistic. While a `false` result is 100% certain, a `true` result is "probably exists." We provide a `check` method to handle the "truth" verification via a fallback closure.
 
 ```php
-Route::middleware('bloom:emails,email')->post('/signup', ...);
+// Check Bloom first, then verify against the database only if Bloom says "maybe"
+$exists = Bloom::filter('emails')->check($email, function ($email) {
+    return \App\Models\User::where('email', $email)->exists();
+});
 ```
 
-### Artisan Commands
+### ✅ Clean Laravel Validation
+Use the custom rule in your Form Requests or controllers for ultra-fast duplicate detection.
+
+```php
+use Iperamuna\LaravelRedisBloom\Rules\BloomRule;
+
+$request->validate([
+    // Standard mode: Fails if Bloom says "maybe exists"
+    'email' => ['required', 'email', new BloomRule('emails')],
+    
+    // Strict mode: Fail immediately with specific "Bloom detected" message
+    'phone' => ['required', new BloomRule('phones', strict: true)],
+    
+    // String syntax support
+    'ip' => 'required|bloom:ips',
+]);
+```
+
+### 🚦 API Guard Middleware
+Protect your high-traffic endpoints from duplicate submissions or known spam entries without hitting your database.
+
+```php
+// Route definition
+Route::middleware('bloom:ips,ip_address')->post('/api/report', ...);
+```
+
+---
+
+## 🧰 Management & Monitoring
+
+### 🩺 System Diagnostics (The Doctor)
+Setup can be tricky. Our doctor analyzes your environment and gives you the exact commands to run for your specific OS.
 
 ```bash
-# Populate filter from database
-php artisan bloom:fill emails "App\Models\User" email
-
-# View statistics
-php artisan bloom:stats emails
-
-# Diagnose installation
 php artisan bloom:doctor
 ```
 
-## Testing
+### 📈 Real-time Statistics
+Monitor the health and efficiency of your filters.
+
+```bash
+php artisan bloom:stats emails
+```
+
+### 📥 Bulk Hydration
+Hydrate a new Bloom filter from your existing production data in seconds.
+
+```bash
+# Ingest all user emails into the 'emails' filter
+php artisan bloom:fill emails "App\Models\User" email --chunk=5000
+```
+
+---
+
+## 🧪 Testing
+
+We use [Pest](https://pestphp.com/) to ensure 100% reliability of the core rotation and metrics logic.
 
 ```bash
 composer test
 ```
 
-## Changelog
-
-Please see [CHANGELOG](CHANGELOG.md) for more information on what has changed recently.
-
-## Contributing
-
-Please see [CONTRIBUTING](CONTRIBUTING.md) for details.
-
-## Security Vulnerabilities
-
-Please review [our security policy](../../security/policy) on how to report security vulnerabilities.
-
-## Credits
-
-- [Indunil Peramuna](https://github.com/iperamuna)
-- [All Contributors](../../contributors)
-
-## License
+## 📄 License
 
 The MIT License (MIT). Please see [License File](LICENSE.md) for more information.
+
+## ✨ Credits
+
+Developed with ❤️ by [Indunil Peramuna](https://iperamuna.com).
+Check out my [GitHub](https://github.com/iperamuna) for more high-performance Laravel tools.
