@@ -49,24 +49,22 @@ class BloomFillCommand extends Command
         }
 
         $this->info('Starting ingestion...');
-        $this->line('');
-
-        $count = 0;
-
-        $model::query()
-            ->select($column)
-            ->chunk($chunk, function ($rows) use ($filter, $column, &$count) {
-                foreach ($rows as $row) {
-                    Bloom::filter($filter)->add($row->$column);
-                    $count++;
+        $total = $model::query()->count();
+        $this->withProgressBar($total, function ($bar) use ($model, $column, $filter, $chunk) {
+            $model::query()->select($column)->chunk($chunk, function ($results) use ($bar, $filter, $column) {
+                foreach ($results as $record) {
+                    $value = $record->{$column};
+                    if ($value) {
+                        Bloom::filter($filter)->add((string) $value);
+                    }
                 }
-
-                $this->info("Processed: {$count}");
+                $bar->advance($results->count());
             });
+        });
 
         $this->line('');
         $this->info('====================================');
-        $this->info(" DONE - Total inserted: {$count}");
+        $this->info(" DONE - Total inserted: {$total}");
         $this->info('====================================');
 
         return self::SUCCESS;

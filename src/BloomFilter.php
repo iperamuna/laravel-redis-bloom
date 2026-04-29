@@ -33,7 +33,7 @@ class BloomFilter
         self::$bloomChecked = true;
         try {
             // Lightweight check using BF.RESERVE on a temporary key
-            Redis::command('BF.RESERVE', ['__bloom_check__', 0.001, 1]);
+            Redis::executeRaw(['BF.RESERVE', '__bloom_check__', '0.001', '1']);
             self::$bloomAvailable = true;
             Redis::del('__bloom_check__');
         } catch (\Throwable $e) {
@@ -88,12 +88,13 @@ class BloomFilter
         $key = $this->key($v);
 
         try {
-            Redis::command('BF.INFO', [$key]);
+            Redis::executeRaw(['BF.INFO', $key]);
         } catch (\Exception) {
-            Redis::command('BF.RESERVE', [
+            Redis::executeRaw([
+                'BF.RESERVE',
                 $key,
-                $this->errorRate,
-                $this->capacity,
+                (string) $this->errorRate,
+                (string) $this->capacity,
             ]);
         }
     }
@@ -106,7 +107,7 @@ class BloomFilter
         $this->ensure($v);
 
         try {
-            $info = Redis::command('BF.INFO', [$key]);
+            $info = Redis::executeRaw(['BF.INFO', $key]);
             $info = collect($info)->chunk(2)->mapWithKeys(fn ($i) => [$i[0] => $i[1]]);
             $count = (int) ($info['Number of items inserted'] ?? 0);
         } catch (\Exception) {
@@ -119,10 +120,11 @@ class BloomFilter
 
             $newKey = $this->key($v);
 
-            Redis::command('BF.RESERVE', [
+            Redis::executeRaw([
+                'BF.RESERVE',
                 $newKey,
-                $this->errorRate,
-                $this->capacity,
+                (string) $this->errorRate,
+                (string) $this->capacity,
             ]);
 
             $this->cleanup($v);
@@ -150,7 +152,7 @@ class BloomFilter
         }
 
         $key = $this->rotateIfNeeded();
-        Redis::command('BF.ADD', [$key, $value]);
+        Redis::executeRaw(['BF.ADD', $key, $value]);
     }
 
     public function exists(string $value): bool
@@ -164,7 +166,7 @@ class BloomFilter
 
         for ($i = $current; $i >= 1; $i--) {
             try {
-                $result = Redis::command('BF.EXISTS', [$this->key($i), $value]);
+                $result = Redis::executeRaw(['BF.EXISTS', $this->key($i), $value]);
 
                 if ($result) {
                     $this->track('hit');
@@ -206,11 +208,9 @@ class BloomFilter
 
         $key = $this->rotateIfNeeded();
 
-        Redis::pipeline(function ($pipe) use ($values, $key) {
-            foreach ($values as $value) {
-                $pipe->command('BF.ADD', [$key, $value]);
-            }
-        });
+        foreach ($values as $value) {
+            Redis::executeRaw(['BF.ADD', $key, $value]);
+        }
     }
 
     public function stats(): array

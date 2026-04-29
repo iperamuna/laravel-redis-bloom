@@ -63,7 +63,7 @@ class BloomDoctorCommand extends Command
     protected function checkBloomRaw(): bool
     {
         try {
-            Redis::command('BF.RESERVE', ['__doctor_test__', 0.01, 1]);
+            Redis::executeRaw(['BF.RESERVE', '__doctor_test__', '0.01', '1']);
             Redis::del('__doctor_test__');
 
             return true;
