@@ -19,7 +19,8 @@ class BloomManager
             $this->config['error_rate'] ?? 0.01,
             $this->config['capacity'] ?? 1000000,
             $this->config['rotation_keep_versions'] ?? 3,
-            $this->config['tracking'] ?? true
+            $this->config['tracking'] ?? true,
+            $this->config['redis_connection'] ?? null
         );
     }
 }

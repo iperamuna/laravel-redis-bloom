@@ -17,8 +17,34 @@ class BloomFilter
         protected float $errorRate = 0.01,
         protected int $capacity = 1000000,
         protected int $keepVersions = 3,
-        protected bool $tracking = true
-    ) {}
+        protected bool $tracking = true,
+        protected ?string $connection = null
+    ) {
+        $this->connection ??= config('bloom.redis_connection', 'default');
+    }
+
+    protected function redis()
+    {
+        return Redis::connection($this->connection);
+    }
+
+    protected function getPrefix(): string
+    {
+        // Try global options first
+        $prefix = config('database.redis.options.prefix', '');
+
+        // Then connection specific
+        if (empty($prefix)) {
+            $prefix = config("database.redis.{$this->connection}.prefix", '');
+        }
+
+        return $prefix;
+    }
+
+    protected function prefixed(string $key): string
+    {
+        return $this->getPrefix().$key;
+    }
 
     protected function ensureBloomAvailable(): void
     {
@@ -33,9 +59,9 @@ class BloomFilter
         self::$bloomChecked = true;
         try {
             // Lightweight check using BF.RESERVE on a temporary key
-            Redis::executeRaw(['BF.RESERVE', '__bloom_check__', '0.001', '1']);
+            $this->redis()->executeRaw(['BF.RESERVE', $this->prefixed('__bloom_check__'), '0.001', '1']);
             self::$bloomAvailable = true;
-            Redis::del('__bloom_check__');
+            $this->redis()->del('__bloom_check__');
         } catch (\Throwable $e) {
             self::$bloomAvailable = false;
             $this->handleMissingModule();
@@ -58,12 +84,12 @@ class BloomFilter
 
     protected function currentVersion(): int
     {
-        return (int) (Redis::get($this->versionKey()) ?? 1);
+        return (int) ($this->redis()->get($this->versionKey()) ?? 1);
     }
 
     protected function setVersion(int $v): void
     {
-        Redis::set($this->versionKey(), $v);
+        $this->redis()->set($this->versionKey(), $v);
     }
 
     protected function key(int $v): string
@@ -79,7 +105,7 @@ class BloomFilter
     protected function track(string $type): void
     {
         if ($this->tracking) {
-            Redis::incr($this->metricsKey($type));
+            $this->redis()->incr($this->metricsKey($type));
         }
     }
 
@@ -88,11 +114,11 @@ class BloomFilter
         $key = $this->key($v);
 
         try {
-            Redis::executeRaw(['BF.INFO', $key]);
+            $this->redis()->executeRaw(['BF.INFO', $this->prefixed($key)]);
         } catch (\Exception) {
-            Redis::executeRaw([
+            $this->redis()->executeRaw([
                 'BF.RESERVE',
-                $key,
+                $this->prefixed($key),
                 (string) $this->errorRate,
                 (string) $this->capacity,
             ]);
@@ -107,7 +133,7 @@ class BloomFilter
         $this->ensure($v);
 
         try {
-            $info = Redis::executeRaw(['BF.INFO', $key]);
+            $info = $this->redis()->executeRaw(['BF.INFO', $this->prefixed($key)]);
             $info = collect($info)->chunk(2)->mapWithKeys(fn ($i) => [$i[0] => $i[1]]);
             $count = (int) ($info['Number of items inserted'] ?? 0);
         } catch (\Exception) {
@@ -120,9 +146,9 @@ class BloomFilter
 
             $newKey = $this->key($v);
 
-            Redis::executeRaw([
+            $this->redis()->executeRaw([
                 'BF.RESERVE',
-                $newKey,
+                $this->prefixed($newKey),
                 (string) $this->errorRate,
                 (string) $this->capacity,
             ]);
@@ -138,9 +164,9 @@ class BloomFilter
     protected function cleanup(int $current): void
     {
         $min = max(1, $current - $this->keepVersions);
-
+ 
         for ($i = 1; $i < $min; $i++) {
-            Redis::del($this->key($i));
+            $this->redis()->del($this->key($i));
         }
     }
 
@@ -152,7 +178,7 @@ class BloomFilter
         }
 
         $key = $this->rotateIfNeeded();
-        Redis::executeRaw(['BF.ADD', $key, $value]);
+        $this->redis()->executeRaw(['BF.ADD', $this->prefixed($key), $value]);
     }
 
     public function exists(string $value): bool
@@ -166,7 +192,7 @@ class BloomFilter
 
         for ($i = $current; $i >= 1; $i--) {
             try {
-                $result = Redis::executeRaw(['BF.EXISTS', $this->key($i), $value]);
+                $result = $this->redis()->executeRaw(['BF.EXISTS', $this->prefixed($this->key($i)), $value]);
 
                 if ($result) {
                     $this->track('hit');
@@ -209,16 +235,16 @@ class BloomFilter
         $key = $this->rotateIfNeeded();
 
         foreach ($values as $value) {
-            Redis::executeRaw(['BF.ADD', $key, $value]);
+            $this->redis()->executeRaw(['BF.ADD', $this->prefixed($key), $value]);
         }
     }
 
     public function stats(): array
     {
         return [
-            'hits' => (int) Redis::get($this->metricsKey('hit')),
-            'misses' => (int) Redis::get($this->metricsKey('miss')),
-            'false_positives' => (int) Redis::get($this->metricsKey('false_positive')),
+            'hits' => (int) $this->redis()->get($this->metricsKey('hit')),
+            'misses' => (int) $this->redis()->get($this->metricsKey('miss')),
+            'false_positives' => (int) $this->redis()->get($this->metricsKey('false_positive')),
         ];
     }
 }
