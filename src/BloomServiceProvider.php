@@ -31,10 +31,10 @@ class BloomServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        $this->loadViewsFrom(__DIR__ . '/../resources/views', 'laravel-redis-bloom');
+        $this->loadViewsFrom(__DIR__.'/../resources/views', 'laravel-redis-bloom');
 
         if (config('bloom.health_enabled', true)) {
-            $this->loadRoutesFrom(__DIR__ . '/../routes/web.php');
+            $this->loadRoutesFrom(__DIR__.'/../routes/web.php');
         }
 
         if ($this->app->runningInConsole()) {

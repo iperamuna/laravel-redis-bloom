@@ -164,7 +164,7 @@ class BloomFilter
     protected function cleanup(int $current): void
     {
         $min = max(1, $current - $this->keepVersions);
- 
+
         for ($i = 1; $i < $min; $i++) {
             $this->redis()->del($this->key($i));
         }

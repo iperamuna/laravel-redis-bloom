@@ -8,6 +8,7 @@
 [![Total Downloads](https://img.shields.io/packagist/dt/iperamuna/laravel-redis-bloom.svg?style=for-the-badge&color=green)](https://packagist.org/packages/iperamuna/laravel-redis-bloom)
 [![Software License](https://img.shields.io/badge/license-MIT-brightgreen.svg?style=for-the-badge)](LICENSE)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/iperamuna/laravel-redis-bloom/run-tests.yml?branch=main&style=for-the-badge)](https://github.com/iperamuna/laravel-redis-bloom/actions)
+[![Laravel Compatibility](https://badge.laravel.cloud/badge/iperamuna/laravel-redis-bloom?style=for-the-badge)](https://packagist.org/packages/iperamuna/laravel-redis-bloom)
 
 **Laravel Redis Bloom** is an industrial-grade probabilistic infrastructure layer for Laravel. It provides a highly optimized, developer-friendly wrapper around the RedisBloom module, enabling sub-millisecond membership checks at massive scale with near-zero memory overhead.
 
@@ -73,6 +74,7 @@ Define your specialized filters in `config/bloom.php`. You can tune the error ra
 return [
     'error_rate' => 0.001, // 0.1% false positive rate
     'capacity'   => 1000000, // Initial capacity of 1 million items
+    'redis_connection' => 'default', // Redis connection name from database.php
     
     'filters' => [
         'emails' => 'bf:users:emails',
@@ -83,6 +85,9 @@ return [
     'rotation_keep_versions' => 3, // Keep last 3 rotated versions for safety
 ];
 ```
+
+> [!TIP]
+> **Automatic Prefixing**: This package automatically detects and honors the `prefix` defined in your `config/database.php`. Your Bloom keys will be correctly namespaced (e.g., `laravel_database_bf:emails`).
 
 ---
 
