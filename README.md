@@ -47,7 +47,9 @@ As your data grows, checking if a value (like an email, IP, or ID) already exist
 ## 🛠 Installation
 
 ### 1. Requirements
-Ensure your Redis server has the [RedisBloom module](https://redis.io/docs/latest/operate/oss_and_stack/install/install-stack/) installed. If you aren't sure, don't worry—our doctor command will check it for you.
+- **PHP**: 8.2 or higher
+- **Laravel**: 11.x, 12.x, or 13.x
+- **Redis**: 4.0+ with the [RedisBloom module](https://redis.io/docs/latest/operate/oss_and_stack/install/install-stack/) installed.
 
 ### 2. Composer
 ```bash
