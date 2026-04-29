@@ -1,0 +1,59 @@
+{
+    "name": "iperamuna/laravel-redis-bloom",
+    "description": "RedisBloom wrapper with auto-rotation, diagnostics, and metrics for Laravel",
+    "keywords": [
+        "laravel",
+        "redis",
+        "bloom",
+        "redisbloom",
+        "probabilistic"
+    ],
+    "homepage": "https://github.com/iperamuna/laravel-redis-bloom",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Indunil Peramuna",
+            "email": "iperamuna@gmail.com",
+            "homepage": "https://iperamuna.com",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^8.1",
+        "illuminate/support": "^10.0|^11.0|^12.0|^13.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^8.0|^9.0|^10.0",
+        "pestphp/pest": "^2.0|^3.0|^4.0",
+        "pestphp/pest-plugin-laravel": "^2.0|^3.0",
+        "laravel/pint": "^1.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Iperamuna\\LaravelRedisBloom\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Iperamuna\\LaravelRedisBloom\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Iperamuna\\LaravelRedisBloom\\BloomServiceProvider"
+            ],
+            "aliases": {
+                "Bloom": "Iperamuna\\LaravelRedisBloom\\Facades\\Bloom"
+            }
+        }
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
